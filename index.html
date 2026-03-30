@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>응급실 차팅</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f5f4f0;
+  --paper: #fdfcf8;
+  --paper2: #f0efe8;
+  --ink: #1a1a18;
+  --ink2: #4a4a44;
+  --ink3: #9a9a90;
+  --line: #e0dfd5;
+  --accent: #1a4a8a;
+  --accent-bg: #e8eef8;
+  --r: 4px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'IBM Plex Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--ink);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+}
+.logo { font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 3px; color: #fff; font-weight: 500; }
+.logo em { color: #6ab0ff; font-style: normal; }
+.hdr-r { display: flex; gap: 8px; align-items: center; }
+.btn { font-family: 'IBM Plex Sans KR', sans-serif; font-size: 12px; font-weight: 500; border-radius: var(--r); cursor: pointer; border: none; padding: 5px 14px; transition: all .15s; }
+.btn-ghost { background: transparent; border: 1px solid #444; color: #aaa; }
+.btn-ghost:hover { border-color: #888; color: #fff; }
+.btn-copy { background: #fff; color: var(--ink); font-weight: 600; }
+.btn-copy:hover { background: #6ab0ff; }
+.btn-copy.ok { background: #4caf50; color: #fff; }
+
+/* ── MAIN LAYOUT ── */
+.main {
+  position: fixed;
+  top: 44px; left: 0; right: 0; bottom: 0;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+}
+
+/* ── LEFT PANEL ── */
+.left {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper2);
+  border-right: 1px solid var(--line);
+  height: 100%;
+  overflow: hidden;
+}
+
+/* tab bar inside left */
+.tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper2);
+}
+.tab-btn {
+  flex: 1;
+  font-family: 'IBM Plex Sans KR', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 1px;
+  padding: 10px 0;
+  border: none; background: transparent;
+  color: var(--ink3); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+}
+.tab-btn:hover { color: var(--ink2); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* scrollable content inside left */
+.left-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+/* tab panels */
+.tab-panel { display: none; flex-direction: column; gap: 13px; }
+.tab-panel.active { display: flex; }
+
+/* ── RIGHT PANEL ── */
+.right {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  height: 100%;
+  overflow: hidden;
+}
+.right-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+  padding: 8px 24px;
+  background: var(--paper2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink3);
+}
+
+/* ── SHARED COMPONENTS ── */
+.sl { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--ink3); margin-bottom: 6px; }
+.sep { height: 1px; background: var(--line); flex-shrink: 0; }
+.sub { margin-top: 8px; }
+.sub-l { font-size: 9px; color: var(--ink3); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+
+/* chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  height: 28px; padding: 0 10px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink2);
+  font-size: 12px; cursor: pointer;
+  transition: all .12s;
+  display: flex; align-items: center;
+  white-space: nowrap; user-select: none;
+  font-family: 'IBM Plex Sans KR', sans-serif;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+
+/* pe chips (dashed = off, solid = on) */
+.pe-chip {
+  height: 28px; padding: 0 10px;
+  border-radius: var(--r);
+  border: 1px dashed var(--line);
+  background: var(--paper); color: var(--ink3);
+  font-size: 12px; cursor: pointer;
+  transition: all .12s;
+  display: flex; align-items: center;
+  white-space: nowrap; user-select: none;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.pe-chip:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
+.pe-chip.on-plus  { background: var(--accent); border-color: var(--accent); border-style: solid; color: #fff; font-weight: 500; }
+.pe-chip.on-minus { background: #6a6a60; border-color: #6a6a60; border-style: solid; color: #fff; font-weight: 500; }
+
+/* inputs */
+.igrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.iw { display: flex; flex-direction: column; gap: 2px; }
+.il { font-size: 9px; color: var(--ink3); letter-spacing: 1px; text-transform: uppercase; }
+.ii {
+  height: 28px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r);
+  color: var(--ink); font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 0 8px; outline: none; width: 100%;
+  transition: border-color .15s;
+}
+.ii:focus { border-color: var(--accent); }
+.ii::placeholder { color: var(--ink3); font-size: 11px; }
+.cnt-input {
+  height: 24px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r);
+  color: var(--ink); font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 0 6px; outline: none; width: 80px;
+  transition: border-color .15s;
+}
+.cnt-input:focus { border-color: var(--accent); }
+.cnt-input::placeholder { color: var(--ink3); }
+.add-btn {
+  height: 28px; padding: 0 10px;
+  border-radius: var(--r); border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink2);
+  cursor: pointer; font-size: 12px;
+  white-space: nowrap; font-family: inherit;
+}
+
+/* output card */
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.card-top { padding: 8px 14px; background: var(--ink); display: flex; align-items: center; justify-content: space-between; }
+.card-top-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #6ab0ff; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf50; animation: blink 1.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.out-copy-btn { background:#fff; border:none; color:var(--ink); font-size:11px; font-weight:600; padding:3px 10px; border-radius:var(--r); cursor:pointer; font-family:inherit; }
+#output {
+  padding: 18px 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; line-height: 1.9;
+  color: var(--ink); white-space: pre-wrap; min-height: 160px;
+}
+.ph { color: var(--ink3); font-style: italic; font-family: 'IBM Plex Sans KR', sans-serif; }
+.note-top { padding: 6px 14px; background: var(--paper2); border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 600; letter-spacing: 2px; color: var(--ink3); text-transform: uppercase; }
+textarea { width: 100%; background: transparent; border: none; outline: none; resize: none; font-family: 'IBM Plex Sans KR', sans-serif; font-size: 13px; color: var(--ink); line-height: 1.7; padding: 10px 14px; min-height: 60px; }
+textarea::placeholder { color: var(--ink3); }
+
+/* toast */
+.toast { position: fixed; bottom: 40px; right: 20px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 500; padding: 8px 16px; border-radius: 6px; opacity: 0; transform: translateY(6px); transition: all .25s; pointer-events: none; font-family: 'IBM Plex Sans KR', sans-serif; z-index: 999; }
+.toast.show { opacity: 1; transform: translateY(0); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">ER<em>·</em>CHART</div>
+  <div class="hdr-r">
+    <button class="btn btn-ghost" onclick="resetAll()">초기화</button>
+    <button class="btn btn-copy" id="copyBtn" onclick="copyText()">복사</button>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- ══ LEFT ══ -->
+  <div class="left">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('general')">일반</button>
+      <button class="tab-btn" onclick="switchTab('trauma')">외상</button>
+      <button class="tab-btn" onclick="switchTab('foley')">Foley</button>
+    </div>
+
+    <div class="left-body">
+
+      <!-- ════ 일반 탭 ════ -->
+      <div class="tab-panel active" id="tab-general">
+
+        <!-- 환자 정보 -->
+        <div>
+          <div class="sl">환자 정보</div>
+          <div class="igrid">
+            <div class="iw"><div class="il">나이</div><input class="ii" id="age" placeholder="56" oninput="render()"></div>
+            <div class="iw">
+              <div class="il">성별</div>
+              <div class="chips">
+                <div class="chip" data-g="sex" data-v="남환" onclick="single(this,'sex')">남</div>
+                <div class="chip" data-g="sex" data-v="여환" onclick="single(this,'sex')">여</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 기저질환 -->
+        <div>
+          <div class="sl">기저질환 (PMHx)</div>
+          <div class="chips">
+            <div class="chip" data-v="DM"           onclick="togglePmhx(this)">DM</div>
+            <div class="chip" data-v="HTN"          onclick="togglePmhx(this)">HTN</div>
+            <div class="chip" data-v="dyslipidemia" onclick="togglePmhx(this)">dyslipidemia</div>
+            <div class="chip" data-v="CAD"          onclick="togglePmhx(this)">CAD</div>
+            <div class="chip" data-v="s/p PCI"      onclick="togglePmhx(this)">s/p PCI</div>
+            <div class="chip" data-v="s/p CABG"     onclick="togglePmhx(this)">s/p CABG</div>
+            <div class="chip" data-v="CHF"          onclick="togglePmhx(this)">CHF</div>
+            <div class="chip" data-v="arrhythmia"   onclick="togglePmhx(this)">arrhythmia</div>
+            <div class="chip" data-v="CVA"          onclick="togglePmhx(this)">CVA</div>
+            <div class="chip" data-v="COPD"         onclick="togglePmhx(this)">COPD</div>
+            <div class="chip" data-v="CKD"          onclick="togglePmhx(this)">CKD</div>
+            <div class="chip" data-v="없음"          onclick="togglePmhx(this)">없음</div>
+          </div>
+          <div id="pmhx-fu-area" style="margin-top:6px;display:flex;flex-direction:column;gap:4px;"></div>
+          <div style="margin-top:6px;display:flex;gap:5px;">
+            <input class="ii" id="pmhx-custom-input" placeholder="직접 입력 후 Enter" style="flex:1;" onkeydown="if(event.key==='Enter') addCustomPmhx()">
+            <button class="add-btn" onclick="addCustomPmhx()">추가</button>
+          </div>
+          <div id="pmhx-custom-tags" style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 주호소 -->
+        <div>
+          <div class="sl">주호소 (Chief Complaint)</div>
+          <div class="chips">
+            <div class="chip" data-g="cc" data-v="vomiting"       onclick="toggleArr(this,'cc')">vomiting</div>
+            <div class="chip" data-g="cc" data-v="nausea"         onclick="toggleArr(this,'cc')">nausea</div>
+            <div class="chip" data-g="cc" data-v="diarrhea"       onclick="toggleArr(this,'cc')">diarrhea</div>
+            <div class="chip" data-g="cc" data-v="abdominal pain" onclick="toggleArr(this,'cc')">abd pain</div>
+            <div class="chip" data-g="cc" data-v="cough"          onclick="toggleArr(this,'cc')">cough</div>
+            <div class="chip" data-g="cc" data-v="sore throat"    onclick="toggleArr(this,'cc')">sore throat</div>
+            <div class="chip" data-g="cc" data-v="rhinorrhea"     onclick="toggleArr(this,'cc')">rhinorrhea</div>
+            <div class="chip" data-g="cc" data-v="dyspnea"        onclick="toggleArr(this,'cc')">dyspnea</div>
+            <div class="chip" data-g="cc" data-v="chest pain"     onclick="toggleArr(this,'cc')">chest pain</div>
+            <div class="chip" data-g="cc" data-v="fever"          onclick="toggleArr(this,'cc')">fever</div>
+            <div class="chip" data-g="cc" data-v="headache"       onclick="toggleArr(this,'cc')">headache</div>
+            <div class="chip" data-g="cc" data-v="dizziness"      onclick="toggleArr(this,'cc')">dizziness</div>
+            <div class="chip" data-g="cc" data-v="palpitation"    onclick="toggleArr(this,'cc')">palpitation</div>
+            <div class="chip" data-g="cc" data-v="back pain"      onclick="toggleArr(this,'cc')">back pain</div>
+          </div>
+          <div style="margin-top:6px;display:flex;gap:5px;">
+            <input class="ii" id="cc-custom-input" placeholder="직접 입력 후 Enter" style="flex:1;" onkeydown="if(event.key==='Enter') addCustomCC()">
+            <button class="add-btn" onclick="addCustomCC()">추가</button>
+          </div>
+          <div id="cc-custom-tags" style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 증상 기간 -->
+        <div>
+          <div class="sl">증상 기간</div>
+          <div class="chips">
+            <div class="chip" data-g="dur" data-v="수시간 전부터"  onclick="single(this,'dur'); calcDate(0)">수시간 전</div>
+            <div class="chip" data-g="dur" data-v="전일 아침부터"  onclick="single(this,'dur'); calcDate(1)">전일 아침</div>
+            <div class="chip" data-g="dur" data-v="전일 점심부터"  onclick="single(this,'dur'); calcDate(1)">전일 점심</div>
+            <div class="chip" data-g="dur" data-v="전일 저녁부터"  onclick="single(this,'dur'); calcDate(1)">전일 저녁</div>
+            <div class="chip" data-g="dur" data-v="1일 전부터"     onclick="single(this,'dur'); calcDate(1)">1일 전</div>
+            <div class="chip" data-g="dur" data-v="2일 전부터"     onclick="single(this,'dur'); calcDate(2)">2일 전</div>
+            <div class="chip" data-g="dur" data-v="3일 전부터"     onclick="single(this,'dur'); calcDate(3)">3일 전</div>
+            <div class="chip" data-g="dur" data-v="4일 전부터"     onclick="single(this,'dur'); calcDate(4)">4일 전</div>
+            <div class="chip" data-g="dur" data-v="5일 전부터"     onclick="single(this,'dur'); calcDate(5)">5일 전</div>
+            <div class="chip" data-g="dur" data-v="1주일 전부터"   onclick="single(this,'dur'); calcDate(7)">1주일 전</div>
+            <div class="chip" data-g="dur" data-v="수주 전부터"    onclick="single(this,'dur'); calcDate(14)">수주 전</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 동반증상 -->
+        <div>
+          <div class="sl">동반증상</div>
+          <div class="chips">
+            <div class="chip" data-g="assoc" data-v="diarrhea"      onclick="toggleArr(this,'assoc')">diarrhea</div>
+            <div class="chip" data-g="assoc" data-v="abdominal pain" onclick="toggleArr(this,'assoc')">abd pain</div>
+            <div class="chip" data-g="assoc" data-v="nausea"        onclick="toggleArr(this,'assoc')">nausea</div>
+            <div class="chip" data-g="assoc" data-v="vomiting"      onclick="toggleArr(this,'assoc')">vomiting</div>
+            <div class="chip" data-g="assoc" data-v="fever"         onclick="toggleArr(this,'assoc')">fever</div>
+            <div class="chip" data-g="assoc" data-v="오한"          onclick="toggleArr(this,'assoc')">오한</div>
+            <div class="chip" data-g="assoc" data-v="myalgia"       onclick="toggleArr(this,'assoc')">myalgia</div>
+            <div class="chip" data-g="assoc" data-v="인후통"        onclick="toggleArr(this,'assoc')">인후통</div>
+            <div class="chip" data-g="assoc" data-v="가래"          onclick="toggleArr(this,'assoc')">가래</div>
+            <div class="chip" data-g="assoc" data-v="cough"         onclick="toggleArr(this,'assoc')">cough</div>
+            <div class="chip" data-g="assoc" data-v="두통"          onclick="toggleArr(this,'assoc')">두통</div>
+            <div class="chip" data-g="assoc" data-v="어지럼증"      onclick="toggleArr(this,'assoc')">어지럼증</div>
+            <div class="chip" data-g="assoc" data-v="식욕저하"      onclick="toggleArr(this,'assoc')">식욕저하</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 신체소견 -->
+        <div>
+          <div class="sl">신체소견 (P/E)</div>
+          <p style="font-size:10px;color:var(--ink3);margin-bottom:8px;">클릭 = <b style="color:var(--accent)">+</b> &nbsp;/&nbsp; 미선택 = 자동 <b>-</b></p>
+
+          <div class="sub">
+            <div class="sub-l">C / S / R</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div class="pe-chip" data-pe="csr_c" onclick="togglePe(this)">C</div>
+              <div class="pe-chip" data-pe="csr_s" onclick="togglePe(this)">S</div>
+              <div class="pe-chip" data-pe="csr_r" onclick="togglePe(this)">R</div>
+            </div>
+          </div>
+
+          <div class="sub">
+            <div class="sub-l">N / V</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <div class="pe-chip" data-pe="nv_n" onclick="togglePe(this)">N</div>
+              <div class="pe-chip" data-pe="nv_v" onclick="togglePe(this)">V</div>
+              <input class="cnt-input" id="nv-cnt" placeholder="횟수" oninput="onNvCnt()">
+            </div>
+          </div>
+
+          <div class="sub">
+            <div class="sub-l">Diarrhea</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <div class="pe-chip" data-pe="diarrhea" onclick="togglePe(this)">diarrhea</div>
+              <input class="cnt-input" id="dia-cnt" placeholder="횟수" oninput="onDiaCnt()">
+            </div>
+          </div>
+
+          <div class="sub">
+            <div class="sub-l">Abdominal Pain</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <div class="pe-chip" data-pe="abd_pain" onclick="togglePe(this)">abd pain</div>
+              <div class="chips" id="abd-area-chips" style="display:none;">
+                <div class="chip" data-g="abd_area" data-v="epigastric area"    onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">epigastric</div>
+                <div class="chip" data-g="abd_area" data-v="periumbilical area" onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">periumbilical</div>
+                <div class="chip" data-g="abd_area" data-v="RLQ" onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">RLQ</div>
+                <div class="chip" data-g="abd_area" data-v="LLQ" onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">LLQ</div>
+                <div class="chip" data-g="abd_area" data-v="RUQ" onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">RUQ</div>
+                <div class="chip" data-g="abd_area" data-v="LUQ" onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">LUQ</div>
+                <div class="chip" data-g="abd_area" data-v="diffuse" onclick="single(this,'abd_area')" style="height:24px;font-size:11px;">diffuse</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub">
+            <div class="sub-l">Melena / Hematochezia</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <div class="pe-chip" data-pe="melena"       onclick="togglePe(this)">melena</div>
+              <div class="pe-chip" data-pe="hematochezia" onclick="togglePe(this)">hematochezia</div>
+            </div>
+          </div>
+
+          <div class="sub">
+            <div class="sub-l">Vital Signs</div>
+            <div class="igrid">
+              <div class="iw"><div class="il">BT (°C)</div><input class="ii" id="bt"   placeholder="36.8" oninput="render()"></div>
+              <div class="iw"><div class="il">BP (mmHg)</div><input class="ii" id="bp" placeholder="130/80" oninput="render()"></div>
+              <div class="iw"><div class="il">HR (/min)</div><input class="ii" id="hr" placeholder="88" oninput="render()"></div>
+              <div class="iw"><div class="il">SpO2 (%)</div><input class="ii" id="spo2" placeholder="98" oninput="render()"></div>
+            </div>
+          </div>
+
+          <div class="sub">
+            <div class="sub-l">기타</div>
+            <div class="chips">
+              <div class="chip" data-g="pe_etc" data-v="tenderness +"  onclick="toggleArr(this,'pe_etc')">tenderness +</div>
+              <div class="chip" data-g="pe_etc" data-v="rebound -"      onclick="toggleArr(this,'pe_etc')">rebound -</div>
+              <div class="chip" data-g="pe_etc" data-v="BS normoactive" onclick="toggleArr(this,'pe_etc')">BS 정상</div>
+              <div class="chip" data-g="pe_etc" data-v="wheezing +"     onclick="toggleArr(this,'pe_etc')">wheezing +</div>
+              <div class="chip" data-g="pe_etc" data-v="decreased BS"   onclick="toggleArr(this,'pe_etc')">decreased BS</div>
+              <div class="chip" data-g="pe_etc" data-v="edema +"        onclick="toggleArr(this,'pe_etc')">edema +</div>
+              <div class="chip" data-g="pe_etc" data-v="swelling +"     onclick="toggleArr(this,'pe_etc')">swelling +</div>
+              <div class="chip" data-g="pe_etc" data-v="ecchymosis +"   onclick="toggleArr(this,'pe_etc')">ecchymosis +</div>
+              <div class="chip" data-g="pe_etc" data-v="ROM 제한"       onclick="toggleArr(this,'pe_etc')">ROM 제한</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-general -->
+
+      <!-- ════ 외상 탭 ════ -->
+      <div class="tab-panel" id="tab-trauma">
+
+        <!-- 환자 정보 -->
+        <div>
+          <div class="sl">환자 정보</div>
+          <div class="igrid">
+            <div class="iw"><div class="il">나이</div><input class="ii" id="t-age" placeholder="57" oninput="renderTrauma()"></div>
+            <div class="iw">
+              <div class="il">성별</div>
+              <div class="chips">
+                <div class="chip" data-g="t-sex" data-v="남환" onclick="tSingle(this,'t-sex')">남</div>
+                <div class="chip" data-g="t-sex" data-v="여환" onclick="tSingle(this,'t-sex')">여</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 기저질환 -->
+        <div>
+          <div class="sl">기저질환 (PMHx)</div>
+          <div class="chips">
+            <div class="chip" data-v="DM"           onclick="toggleTPmhx(this)">DM</div>
+            <div class="chip" data-v="HTN"          onclick="toggleTPmhx(this)">HTN</div>
+            <div class="chip" data-v="dyslipidemia" onclick="toggleTPmhx(this)">dyslipidemia</div>
+            <div class="chip" data-v="CAD"          onclick="toggleTPmhx(this)">CAD</div>
+            <div class="chip" data-v="s/p PCI"      onclick="toggleTPmhx(this)">s/p PCI</div>
+            <div class="chip" data-v="s/p CABG"     onclick="toggleTPmhx(this)">s/p CABG</div>
+            <div class="chip" data-v="CHF"          onclick="toggleTPmhx(this)">CHF</div>
+            <div class="chip" data-v="arrhythmia"   onclick="toggleTPmhx(this)">arrhythmia</div>
+            <div class="chip" data-v="CVA"          onclick="toggleTPmhx(this)">CVA</div>
+            <div class="chip" data-v="COPD"         onclick="toggleTPmhx(this)">COPD</div>
+            <div class="chip" data-v="CKD"          onclick="toggleTPmhx(this)">CKD</div>
+            <div class="chip" data-v="없음"          onclick="toggleTPmhx(this)">없음</div>
+          </div>
+          <div id="t-pmhx-custom-tags" style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+          <div style="margin-top:6px;display:flex;gap:5px;">
+            <input class="ii" id="t-pmhx-custom-input" placeholder="직접 입력 후 Enter" style="flex:1;" onkeydown="if(event.key==='Enter') addTPmhxCustom()">
+            <button class="add-btn" onclick="addTPmhxCustom()">추가</button>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 수상기전 -->
+        <div>
+          <div class="sl">수상기전</div>
+          <div class="chips">
+            <div class="chip" data-g="t-mech" data-v="낫에 수상하여"                   onclick="tSingle(this,'t-mech')">낫</div>
+            <div class="chip" data-g="t-mech" data-v="칼에 수상하여"                   onclick="tSingle(this,'t-mech')">칼</div>
+            <div class="chip" data-g="t-mech" data-v="유리에 수상하여"                 onclick="tSingle(this,'t-mech')">유리</div>
+            <div class="chip" data-g="t-mech" data-v="못에 수상하여"                   onclick="tSingle(this,'t-mech')">못</div>
+            <div class="chip" data-g="t-mech" data-v="무거운 물체에 깔리며 수상하여"   onclick="tSingle(this,'t-mech')">중량물 압박</div>
+            <div class="chip" data-g="t-mech" data-v="문에 끼며 수상하여"              onclick="tSingle(this,'t-mech')">문 끼임</div>
+            <div class="chip" data-g="t-mech" data-v="넘어지며 수상하여"               onclick="tSingle(this,'t-mech')">낙상</div>
+            <div class="chip" data-g="t-mech" data-v="교통사고로 수상하여"             onclick="tSingle(this,'t-mech')">교통사고</div>
+            <div class="chip" data-g="t-mech" data-v="둔기에 맞으며 수상하여"          onclick="tSingle(this,'t-mech')">둔기</div>
+            <div class="chip" data-g="t-mech" data-v="추락하며 수상하여"               onclick="tSingle(this,'t-mech')">추락</div>
+            <div class="chip" data-g="t-mech" data-v="화상으로 수상하여"               onclick="tSingle(this,'t-mech')">화상</div>
+          </div>
+          <div style="margin-top:6px;">
+            <input class="ii" id="t-mech-custom" placeholder="직접 입력 (예: 기계에 끼며 수상하여)" style="width:100%;" oninput="renderTrauma()">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 주호소 -->
+        <div>
+          <div class="sl">주호소 (Injury)</div>
+          <div class="chips">
+            <div class="chip" data-g="t-cc" data-v="laceration"   onclick="tSingle(this,'t-cc')">laceration</div>
+            <div class="chip" data-g="t-cc" data-v="contusion"    onclick="tSingle(this,'t-cc')">contusion</div>
+            <div class="chip" data-g="t-cc" data-v="pain"         onclick="tSingle(this,'t-cc')">pain</div>
+            <div class="chip" data-g="t-cc" data-v="swelling"     onclick="tSingle(this,'t-cc')">swelling</div>
+            <div class="chip" data-g="t-cc" data-v="fracture"     onclick="tSingle(this,'t-cc')">fracture</div>
+            <div class="chip" data-g="t-cc" data-v="sprain"       onclick="tSingle(this,'t-cc')">sprain</div>
+            <div class="chip" data-g="t-cc" data-v="dislocation"  onclick="tSingle(this,'t-cc')">dislocation</div>
+            <div class="chip" data-g="t-cc" data-v="burn"         onclick="tSingle(this,'t-cc')">burn</div>
+            <div class="chip" data-g="t-cc" data-v="abrasion"     onclick="tSingle(this,'t-cc')">abrasion</div>
+            <div class="chip" data-g="t-cc" data-v="crush injury" onclick="tSingle(this,'t-cc')">crush injury</div>
+          </div>
+          <div style="margin-top:6px;">
+            <input class="ii" id="t-cc-custom" placeholder="직접 입력" style="width:100%;" oninput="renderTrauma()">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 부위 -->
+        <div>
+          <div class="sl">부위 (Site)</div>
+          <div class="sub">
+            <div class="sub-l">좌/우</div>
+            <div class="chips">
+              <div class="chip" data-g="t-side" data-v="Rt."  onclick="tSingle(this,'t-side')">Rt.</div>
+              <div class="chip" data-g="t-side" data-v="Lt."  onclick="tSingle(this,'t-side')">Lt.</div>
+              <div class="chip" data-g="t-side" data-v="Bil." onclick="tSingle(this,'t-side')">Bil.</div>
+            </div>
+          </div>
+          <div class="sub">
+            <div class="sub-l">해부 부위</div>
+            <div class="chips">
+              <div class="chip" data-g="t-part" data-v="finger"      onclick="tSingle(this,'t-part')">finger</div>
+              <div class="chip" data-g="t-part" data-v="thumb"       onclick="tSingle(this,'t-part')">thumb</div>
+              <div class="chip" data-g="t-part" data-v="hand dorsum" onclick="tSingle(this,'t-part')">hand dorsum</div>
+              <div class="chip" data-g="t-part" data-v="hand palm"   onclick="tSingle(this,'t-part')">hand palm</div>
+              <div class="chip" data-g="t-part" data-v="wrist"       onclick="tSingle(this,'t-part')">wrist</div>
+              <div class="chip" data-g="t-part" data-v="forearm"     onclick="tSingle(this,'t-part')">forearm</div>
+              <div class="chip" data-g="t-part" data-v="elbow"       onclick="tSingle(this,'t-part')">elbow</div>
+              <div class="chip" data-g="t-part" data-v="arm"         onclick="tSingle(this,'t-part')">arm</div>
+              <div class="chip" data-g="t-part" data-v="shoulder"    onclick="tSingle(this,'t-part')">shoulder</div>
+              <div class="chip" data-g="t-part" data-v="toe"         onclick="tSingle(this,'t-part')">toe</div>
+              <div class="chip" data-g="t-part" data-v="great toe"   onclick="tSingle(this,'t-part')">great toe</div>
+              <div class="chip" data-g="t-part" data-v="foot dorsum" onclick="tSingle(this,'t-part')">foot dorsum</div>
+              <div class="chip" data-g="t-part" data-v="foot sole"   onclick="tSingle(this,'t-part')">foot sole</div>
+              <div class="chip" data-g="t-part" data-v="ankle"       onclick="tSingle(this,'t-part')">ankle</div>
+              <div class="chip" data-g="t-part" data-v="lower leg"   onclick="tSingle(this,'t-part')">lower leg</div>
+              <div class="chip" data-g="t-part" data-v="knee"        onclick="tSingle(this,'t-part')">knee</div>
+              <div class="chip" data-g="t-part" data-v="thigh"       onclick="tSingle(this,'t-part')">thigh</div>
+              <div class="chip" data-g="t-part" data-v="face"        onclick="tSingle(this,'t-part')">face</div>
+              <div class="chip" data-g="t-part" data-v="forehead"    onclick="tSingle(this,'t-part')">forehead</div>
+              <div class="chip" data-g="t-part" data-v="scalp"       onclick="tSingle(this,'t-part')">scalp</div>
+              <div class="chip" data-g="t-part" data-v="lip"         onclick="tSingle(this,'t-part')">lip</div>
+              <div class="chip" data-g="t-part" data-v="chin"        onclick="tSingle(this,'t-part')">chin</div>
+              <div class="chip" data-g="t-part" data-v="back"        onclick="tSingle(this,'t-part')">back</div>
+              <div class="chip" data-g="t-part" data-v="chest"       onclick="tSingle(this,'t-part')">chest</div>
+              <div class="chip" data-g="t-part" data-v="abdomen"     onclick="tSingle(this,'t-part')">abdomen</div>
+            </div>
+            <div style="margin-top:6px;">
+              <input class="ii" id="t-part-custom" placeholder="직접 입력" style="width:100%;" oninput="renderTrauma()">
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- 상처 소견 -->
+        <div>
+          <div class="sl">상처 소견</div>
+          <div class="sub">
+            <div class="sub-l">깊이 (Layer)</div>
+            <div class="chips">
+              <div class="chip" data-g="t-layer" data-v="dermis"             onclick="tSingle(this,'t-layer')">dermis</div>
+              <div class="chip" data-g="t-layer" data-v="subcutaneous layer" onclick="tSingle(this,'t-layer')">subcutaneous</div>
+              <div class="chip" data-g="t-layer" data-v="fascial layer"      onclick="tSingle(this,'t-layer')">fascial</div>
+              <div class="chip" data-g="t-layer" data-v="muscle layer"       onclick="tSingle(this,'t-layer')">muscle</div>
+              <div class="chip" data-g="t-layer" data-v="bone touching"      onclick="tSingle(this,'t-layer')">bone touching</div>
+            </div>
+          </div>
+          <div class="sub">
+            <div class="sub-l">크기 (Size)</div>
+            <div class="chips">
+              <div class="chip" data-g="t-size" data-v="0.5cm" onclick="tSingle(this,'t-size')">0.5cm</div>
+              <div class="chip" data-g="t-size" data-v="1cm"   onclick="tSingle(this,'t-size')">1cm</div>
+              <div class="chip" data-g="t-size" data-v="1.5cm" onclick="tSingle(this,'t-size')">1.5cm</div>
+              <div class="chip" data-g="t-size" data-v="2cm"   onclick="tSingle(this,'t-size')">2cm</div>
+              <div class="chip" data-g="t-size" data-v="3cm"   onclick="tSingle(this,'t-size')">3cm</div>
+              <div class="chip" data-g="t-size" data-v="4cm"   onclick="tSingle(this,'t-size')">4cm</div>
+              <div class="chip" data-g="t-size" data-v="5cm"   onclick="tSingle(this,'t-size')">5cm</div>
+            </div>
+            <div style="margin-top:5px;">
+              <input class="ii" id="t-size-custom" placeholder="직접 입력 (예: 2x3cm)" style="width:100%;" oninput="renderTrauma()">
+            </div>
+          </div>
+          <div class="sub">
+            <div class="sub-l">소견 — 클릭 = <b style="color:var(--accent)">+</b>, 미선택 = 자동 <b>-</b></div>
+            <div class="chips">
+              <div class="pe-chip" data-tk="nailbed"   onclick="toggleTFinding(this)">nailbed injury</div>
+              <div class="pe-chip" data-tk="fb"        onclick="toggleTFinding(this)">foreign body</div>
+              <div class="pe-chip" data-tk="bleeding"  onclick="toggleTFinding(this)">active bleeding</div>
+              <div class="pe-chip" data-tk="tendon"    onclick="toggleTFinding(this)">tendon injury</div>
+              <div class="pe-chip" data-tk="nerve"     onclick="toggleTFinding(this)">nerve injury</div>
+              <div class="pe-chip" data-tk="deformity" onclick="toggleTFinding(this)">deformity</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- X-ray -->
+        <div>
+          <div class="sl">X-ray</div>
+          <button onclick="addXray()" style="width:100%;height:36px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);color:var(--ink2);font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer;text-align:left;padding:0 12px;transition:all .12s;"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--ink2)'">
+            + X-ray : no definite bony abnormality
+          </button>
+          <p style="font-size:10px;color:var(--ink3);margin-top:5px;">추가 후 우측 output에서 직접 수정 가능</p>
+        </div>
+
+      </div><!-- /tab-trauma -->
+
+      <!-- ════ Foley 탭 ════ -->
+      <div class="tab-panel" id="tab-foley">
+        <div>
+          <div class="sl">종류 선택</div>
+          <div class="chips">
+            <div class="chip" data-g="foley-type" data-v="foley" onclick="selectFoleyType(this,'foley')">Foley Change</div>
+            <div class="chip" data-g="foley-type" data-v="ltube" onclick="selectFoleyType(this,'ltube')">L-tube Change</div>
+          </div>
+        </div>
+      </div><!-- /tab-foley -->
+
+    </div><!-- /left-body -->
+  </div><!-- /left -->
+
+  <!-- ══ RIGHT ══ -->
+  <div class="right">
+    <div class="right-body">
+
+      <!-- 일반/외상용 output (foley탭에서는 숨김) -->
+      <div id="general-right">
+        <div class="card">
+          <div class="card-top">
+            <span class="card-top-label">CHART OUTPUT</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="out-copy-btn" id="outputCopyBtn" onclick="copyText()">복사</button>
+              <div class="dot"></div>
+            </div>
+          </div>
+          <div id="output" contenteditable="true" spellcheck="false"><span class="ph">왼쪽 항목을 클릭하면 차팅이 자동 생성됩니다.</span></div>
+        </div>
+        <div class="card">
+          <div class="note-top">추가 메모</div>
+          <textarea id="memo" placeholder="추가로 기록할 내용..." oninput="render()"></textarea>
+        </div>
+        <div class="card" id="date-card" style="display:none;">
+          <div class="card-top" style="justify-content:space-between;">
+            <span class="card-top-label">발병일 (YYYY-MM-DD)</span>
+            <button class="out-copy-btn" id="dateCopyBtn" onclick="copyDate()">복사</button>
+          </div>
+          <div style="padding:14px 20px;display:flex;align-items:center;gap:12px;">
+            <div id="date-display" style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500;color:var(--ink);letter-spacing:2px;"></div>
+            <div id="date-desc" style="font-size:11px;color:var(--ink3);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Foley/L-tube용 right panel (foley탭에서만 표시) -->
+      <div id="foley-right" style="display:none;">
+        <div id="foley-right-inner">
+          <div class="ph" style="padding:20px 0;">왼쪽에서 종류를 선택하세요.</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="foot">
+      <span id="status">대기 중</span>
+      <span id="charcount">0자</span>
+    </div>
+  </div><!-- /right -->
+
+</div><!-- /main -->
+
+<div class="toast" id="toast">클립보드에 복사되었습니다</div>
+
+<script>
+// ── STATE ──
+const S = {
+  sex: null, dur: null, abd_area: null,
+  pmhx: [], pmhxFu: {}, pmhxCustom: [],
+  cc: [], ccCustom: [], assoc: [], pe_etc: [],
+  pe: { csr_c:null, csr_s:null, csr_r:null, nv_n:null, nv_v:null, diarrhea:null, abd_pain:null, melena:null, hematochezia:null },
+  peActive: { csr:false, nv:false, diarrhea:false, abd:false, mh:false },
+};
+const T = {
+  't-sex':null,'t-mech':null,'t-cc':null,'t-side':null,'t-part':null,'t-layer':null,'t-size':null,
+  pmhx:[], pmhxCustom:[],
+  findings:{ nailbed:null, fb:null, bleeding:null, tendon:null, nerve:null, deformity:null },
+  findingsActive: false,
+};
+let currentTab = 'general';
+
+// ── TAB ──
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', (i===0&&tab==='general')||(i===1&&tab==='trauma')||(i===2&&tab==='foley'));
+  });
+  document.getElementById('tab-general').classList.toggle('active', tab==='general');
+  document.getElementById('tab-trauma').classList.toggle('active', tab==='trauma');
+  document.getElementById('tab-foley').classList.toggle('active', tab==='foley');
+  // 오른쪽 패널 전환
+  document.getElementById('general-right').style.display = tab==='foley' ? 'none' : 'block';
+  document.getElementById('foley-right').style.display   = tab==='foley' ? 'block' : 'none';
+  if (tab==='general') render();
+  else if (tab==='trauma') renderTrauma();
+  else initFoley();
+}
+
+// ── FOLEY ──
+function initFoley() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth()+1).padStart(2,'0');
+  const dd   = String(now.getDate()).padStart(2,'0');
+  const hh   = String(now.getHours()).padStart(2,'0');
+  window._foleyDateStr     = `${yyyy}-${mm}-${dd}`;
+  window._foleyDatetimeStr = `${yyyy}-${mm}-${dd} ${hh}:00`;
+}
+
+function selectFoleyType(el, type) {
+  document.querySelectorAll('[data-g="foley-type"]').forEach(e => e.classList.remove('on'));
+  el.classList.add('on');
+  initFoley();
+
+  const isFolley = type === 'foley';
+  const keyword  = isFolley ? 'foley'              : 'levin';
+  const reason   = isFolley ? 'for foley change'   : 'for L-tube change';
+  const hpi      = isFolley ? 'foley change위해 내원함.'   : 'L-tube change위해 내원함.';
+  const dx       = isFolley ? 'dysuria [주]'        : 'dysphagia [주]';
+  const tx       = isFolley ? 'foley change 시행함.' : 'L-tube change 시행함.';
+  const title    = isFolley ? 'Foley Change'        : 'L-tube Change';
+
+  const d = window._foleyDateStr;
+  const dt = window._foleyDatetimeStr;
+
+  function row(label, text, id) {
+    const idAttr = id ? `id="${id}"` : '';
+    return `
+      <div style="margin-bottom:10px;">
+        <div class="sl" style="margin-bottom:4px;">${label}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;">
+          <span ${idAttr} style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--ink);">${text}</span>
+          <button class="out-copy-btn" onclick="fCopy('${text.replace(/'/g,"\\'")}', this)">복사</button>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('foley-right-inner').innerHTML = `
+    <div class="card" style="overflow:visible;">
+      <div class="card-top">
+        <span class="card-top-label">${title}</span>
+      </div>
+      <div style="padding:16px;">
+        ${row('주호소 검색키워드', keyword)}
+        ${row('당일 날짜 (주호소란)', d)}
+        ${row('발생일시', dt)}
+        ${row('내원사유', reason)}
+        ${row('현병력', hpi)}
+        ${row('진단명', dx)}
+        ${row('치료계획', tx)}
+      </div>
+    </div>`;
+}
+
+function fCopy(text, btn) {
+  copyToClipboard(text, btn);
+}
+
+// ── COPY HELPERS ──
+function copyToClipboard(text, btnEl) {
+  const finish = () => {
+    if (!btnEl) return;
+    const orig = btnEl.textContent;
+    btnEl.textContent = '✓ 복사됨';
+    setTimeout(() => btnEl.textContent = orig, 1500);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(finish).catch(() => fallback(text, finish));
+  } else { fallback(text, finish); }
+}
+function fallback(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (cb) cb();
+}
+function copyText() {
+  const el = document.getElementById('output');
+  const text = el.innerText.trim();
+  if (!text || el.querySelector('.ph')) return;
+  copyToClipboard(text, document.getElementById('outputCopyBtn'));
+  const hBtn = document.getElementById('copyBtn');
+  hBtn.textContent = '✓ 복사됨'; hBtn.classList.add('ok');
+  setTimeout(() => { hBtn.textContent = '복사'; hBtn.classList.remove('ok'); }, 1500);
+  document.getElementById('toast').classList.add('show');
+  setTimeout(() => document.getElementById('toast').classList.remove('show'), 2000);
+}
+function copyDate() {
+  const text = document.getElementById('date-display').textContent;
+  if (!text) return;
+  copyToClipboard(text, document.getElementById('dateCopyBtn'));
+}
+
+// ── DATE ──
+function calcDate(days) {
+  const card = document.getElementById('date-card');
+  if (S.dur === null) { card.style.display = 'none'; return; }
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  document.getElementById('date-display').textContent = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('date-desc').textContent = days===0 ? '오늘' : `오늘로부터 ${days}일 전`;
+  card.style.display = 'block';
+}
+
+// ── GENERAL HELPERS ──
+function togglePmhx(el) {
+  const v = el.dataset.v;
+  const on = el.classList.contains('on');
+  el.classList.toggle('on', !on);
+  if (!on) { if (!S.pmhx.includes(v)) S.pmhx.push(v); }
+  else { S.pmhx = S.pmhx.filter(x=>x!==v); delete S.pmhxFu[v]; }
+  rebuildFu(); render();
+}
+function rebuildFu() {
+  const area = document.getElementById('pmhx-fu-area');
+  area.innerHTML = '';
+  S.pmhx.filter(v=>v!=='없음').forEach(v => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    const sv = v.replace(/'/g,"\\'");
+    row.innerHTML = `<span style="font-size:11px;color:var(--ink2);font-family:'IBM Plex Mono',monospace;min-width:90px;">${v}</span>
+      <input class="ii" placeholder="f/u 병원 (선택)" style="font-size:11px;" value="${S.pmhxFu[v]||''}" oninput="S.pmhxFu['${sv}']=this.value;render()">`;
+    area.appendChild(row);
+  });
+}
+function addCustomPmhx() {
+  const input = document.getElementById('pmhx-custom-input');
+  const val = input.value.trim();
+  if (!val || S.pmhxCustom.includes(val)) { input.value=''; return; }
+  S.pmhxCustom.push(val); input.value='';
+  const tag = document.createElement('div');
+  tag.className='chip on'; tag.style.fontFamily="'IBM Plex Mono',monospace";
+  tag.innerHTML=`${val} <span style="margin-left:4px;opacity:.7;font-size:11px;" onclick="removeCustomPmhx('${val.replace(/'/g,"\\'")}',this.parentElement)">✕</span>`;
+  document.getElementById('pmhx-custom-tags').appendChild(tag); render();
+}
+function removeCustomPmhx(val, el) { S.pmhxCustom=S.pmhxCustom.filter(x=>x!==val); el.remove(); render(); }
+function addCustomCC() {
+  const input = document.getElementById('cc-custom-input');
+  const val = input.value.trim();
+  if (!val || S.ccCustom.includes(val)) { input.value=''; return; }
+  S.ccCustom.push(val); input.value='';
+  const tag = document.createElement('div');
+  tag.className='chip on'; tag.style.fontFamily="'IBM Plex Mono',monospace";
+  tag.innerHTML=`${val} <span style="margin-left:4px;opacity:.7;font-size:11px;" onclick="removeCustomCC('${val.replace(/'/g,"\\'")}',this.parentElement)">✕</span>`;
+  document.getElementById('cc-custom-tags').appendChild(tag); render();
+}
+function removeCustomCC(val, el) { S.ccCustom=S.ccCustom.filter(x=>x!==val); el.remove(); render(); }
+function toggleArr(el, key) {
+  const v = el.dataset.v, on = el.classList.contains('on');
+  el.classList.toggle('on', !on);
+  if (!on) { if (!S[key].includes(v)) S[key].push(v); }
+  else { S[key]=S[key].filter(x=>x!==v); }
+  render();
+}
+function single(el, g) {
+  document.querySelectorAll(`[data-g="${g}"]`).forEach(e=>e.classList.remove('on'));
+  const was = S[g]===el.dataset.v;
+  S[g] = was ? null : el.dataset.v;
+  if (!was) el.classList.add('on');
+  render();
+}
+function togglePe(el) {
+  const k = el.dataset.pe;
+  const cur = S.pe[k]; // null → '+' → '-' → null
+  const next = cur === null ? '+' : cur === '+' ? '-' : null;
+  S.pe[k] = next;
+  el.classList.remove('on-plus','on-minus');
+  if (next === '+') el.classList.add('on-plus');
+  else if (next === '-') el.classList.add('on-minus');
+
+  if (['csr_c','csr_s','csr_r'].includes(k)) S.peActive.csr = true;
+  if (['nv_n','nv_v'].includes(k)) S.peActive.nv = true;
+  if (k==='diarrhea') S.peActive.diarrhea = true;
+  if (k==='abd_pain') {
+    S.peActive.abd = true;
+    document.getElementById('abd-area-chips').style.display = next==='+'?'flex':'none';
+    if (next!=='+') { S.abd_area=null; document.querySelectorAll('[data-g="abd_area"]').forEach(e=>e.classList.remove('on')); }
+  }
+  if (['melena','hematochezia'].includes(k)) S.peActive.mh = true;
+  // 모두 null이면 active 해제
+  if (['csr_c','csr_s','csr_r'].every(x=>S.pe[x]===null)) S.peActive.csr=false;
+  if (['nv_n','nv_v'].every(x=>S.pe[x]===null)) S.peActive.nv=false;
+  if (S.pe.diarrhea===null&&!document.getElementById('dia-cnt').value) S.peActive.diarrhea=false;
+  if (S.pe.abd_pain===null) S.peActive.abd=false;
+  if (['melena','hematochezia'].every(x=>S.pe[x]===null)) S.peActive.mh=false;
+  render();
+}
+function onNvCnt()  { if(document.getElementById('nv-cnt').value)  S.peActive.nv=true; render(); }
+function onDiaCnt() { if(document.getElementById('dia-cnt').value) S.peActive.diarrhea=true; render(); }
+
+// ── TRAUMA HELPERS ──
+function tSingle(el, g) {
+  document.querySelectorAll(`[data-g="${g}"]`).forEach(e=>e.classList.remove('on'));
+  const was = T[g]===el.dataset.v;
+  T[g] = was ? null : el.dataset.v;
+  if (!was) el.classList.add('on');
+  renderTrauma();
+}
+function toggleTPmhx(el) {
+  const v = el.dataset.v, on = el.classList.contains('on');
+  el.classList.toggle('on', !on);
+  if (!on) { if (!T.pmhx.includes(v)) T.pmhx.push(v); }
+  else { T.pmhx=T.pmhx.filter(x=>x!==v); }
+  renderTrauma();
+}
+function addTPmhxCustom() {
+  const input = document.getElementById('t-pmhx-custom-input');
+  const val = input.value.trim();
+  if (!val||T.pmhxCustom.includes(val)) { input.value=''; return; }
+  T.pmhxCustom.push(val); input.value='';
+  const tag=document.createElement('div');
+  tag.className='chip on'; tag.style.fontFamily="'IBM Plex Mono',monospace";
+  tag.innerHTML=`${val} <span style="margin-left:4px;opacity:.7;font-size:11px;" onclick="removeTPmhxCustom('${val.replace(/'/g,"\\'")}',this.parentElement)">✕</span>`;
+  document.getElementById('t-pmhx-custom-tags').appendChild(tag); renderTrauma();
+}
+function removeTPmhxCustom(val,el) { T.pmhxCustom=T.pmhxCustom.filter(x=>x!==val); el.remove(); renderTrauma(); }
+function toggleTFinding(el) {
+  const k = el.dataset.tk;
+  const cur = T.findings[k]; // null → '+' → '-' → null
+  const next = cur === null ? '+' : cur === '+' ? '-' : null;
+  T.findings[k] = next;
+  el.classList.remove('on-plus','on-minus');
+  if (next === '+') el.classList.add('on-plus');
+  else if (next === '-') el.classList.add('on-minus');
+  T.findingsActive = Object.values(T.findings).some(v => v !== null);
+  renderTrauma();
+}
+
+// ── RENDER (일반) ──
+function render() {
+  if (currentTab !== 'general') return;
+  const age=document.getElementById('age').value.trim();
+  const bt=document.getElementById('bt').value.trim();
+  const bp=document.getElementById('bp').value.trim();
+  const hr=document.getElementById('hr').value.trim();
+  const spo2=document.getElementById('spo2').value.trim();
+  const nvCnt=document.getElementById('nv-cnt').value.trim();
+  const diaCnt=document.getElementById('dia-cnt').value.trim();
+  const memo=document.getElementById('memo').value.trim();
+
+  let lines=[], any=false;
+
+  const noHx = S.pmhx.includes('없음');
+  if ((S.pmhx.length||S.pmhxCustom.length)&&!noHx) {
+    any=true;
+    S.pmhx.forEach(v=>{ const fu=S.pmhxFu[v]?` (${S.pmhxFu[v]} f/u)`:''; lines.push(`# ${v}${fu}`); });
+    S.pmhxCustom.forEach(v=>lines.push(`# ${v}`));
+    lines.push('');
+  }
+
+  const allCC=[...S.cc,...S.ccCustom];
+  if (age||S.sex||allCC.length||S.dur||noHx) {
+    any=true;
+    const prefix=noHx?'기저질환 없는 ':'';
+    let who='';
+    if (age&&S.sex) who=`${prefix}${age}세 ${S.sex}`;
+    else if (age) who=`${prefix}${age}세 환자`;
+    else if (S.sex) who=`${prefix}${S.sex}`;
+    else if (noHx) who='기저질환 없는 환자';
+    if (allCC.length) {
+      const ccStr=allCC.join(', ');
+      const durStr=S.dur?`${S.dur} 발생한`:'';
+      lines.push(who?(durStr?`${who}, ${durStr} ${ccStr} 주소로 내원함.`:`${who}, ${ccStr} 주소로 내원함.`):(durStr?`${durStr} ${ccStr} 주소로 내원함.`:`${ccStr} 주소로 내원함.`));
+    } else if (who) lines.push(`${who} 내원함.`);
+  }
+
+  const assocF=S.assoc.filter(v=>![...S.cc,...S.ccCustom].includes(v));
+  if (assocF.length) { any=true; lines.push(`${assocF.join(', ')} 동반됨.`); }
+
+  const hasPE=S.peActive.csr||S.peActive.nv||S.peActive.diarrhea||S.peActive.abd||S.peActive.mh||bt||bp||hr||spo2||S.pe_etc.length;
+  if (any&&hasPE) lines.push('');
+
+  if (S.peActive.csr) { any=true; lines.push(`C/S/R ${S.pe.csr_c||'?'}/${S.pe.csr_s||'?'}/${S.pe.csr_r||'?'}`); }
+  if (S.peActive.nv)  { any=true; const cnt=(S.pe.nv_v==='+'&&nvCnt)?`, ${nvCnt}`:''; lines.push(`N/V ${S.pe.nv_n||'?'}/${S.pe.nv_v||'?'}${cnt}`); }
+  if (S.peActive.diarrhea) { any=true; const cnt=(S.pe.diarrhea==='+'&&diaCnt)?` ${diaCnt}`:''; lines.push(`diarrhea ${S.pe.diarrhea||'?'}${cnt}`); }
+  if (S.peActive.abd) { any=true; const area=(S.pe.abd_pain==='+'&&S.abd_area)?` (${S.abd_area})`:''; lines.push(`abdominal pain ${S.pe.abd_pain||'?'}${area}`); }
+  if (S.peActive.mh)  { any=true; lines.push(`melena/hematochezia ${S.pe.melena||'?'}/${S.pe.hematochezia||'?'}`); }
+  if (bt)   { any=true; lines.push(`fever ${bt}`); }
+  if (bp)   { any=true; lines.push(`BP ${bp}`); }
+  if (hr)   { any=true; lines.push(`HR ${hr}`); }
+  if (spo2) { any=true; lines.push(`SpO2 ${spo2}%`); }
+  if (S.pe_etc.length) { any=true; S.pe_etc.forEach(p=>lines.push(p)); }
+  if (memo) { any=true; lines.push(''); lines.push(memo); }
+
+  setOutput(lines, any);
+}
+
+// ── RENDER (외상) ──
+function renderTrauma() {
+  if (currentTab !== 'trauma') return;
+  const age=document.getElementById('t-age').value.trim();
+  const mechCustom=document.getElementById('t-mech-custom').value.trim();
+  const ccCustom=document.getElementById('t-cc-custom').value.trim();
+  const partCustom=document.getElementById('t-part-custom').value.trim();
+  const sizeCustom=document.getElementById('t-size-custom').value.trim();
+
+  let lines=[], any=false;
+
+  const noHx=T.pmhx.includes('없음');
+  if ((T.pmhx.length||T.pmhxCustom.length)&&!noHx) {
+    any=true;
+    T.pmhx.forEach(v=>lines.push(`# ${v}`));
+    T.pmhxCustom.forEach(v=>lines.push(`# ${v}`));
+    lines.push('');
+  }
+
+  const mech=mechCustom||T['t-mech'];
+  const cc=ccCustom||T['t-cc'];
+  const side=T['t-side'];
+  const part=partCustom||T['t-part'];
+
+  if (age||T['t-sex']||mech||cc||side||part||noHx) {
+    any=true;
+    const prefix=noHx?'기저질환 없는 ':'';
+    let who='';
+    if (age&&T['t-sex']) who=`${prefix}${age}세 ${T['t-sex']}`;
+    else if (age) who=`${prefix}${age}세 환자`;
+    else if (T['t-sex']) who=`${prefix}${T['t-sex']}`;
+    else if (noHx) who='기저질환 없는 환자';
+    const siteStr=[side,part].filter(Boolean).join(' ');
+    const injStr=[siteStr,cc].filter(Boolean).join(' ');
+    const mechStr=mech?`${mech} `:'';
+    let line='';
+    if (who&&injStr) line=`${who}, ${mechStr}발생한 ${injStr} 주소로 내원함.`;
+    else if (who) line=`${who} 내원함.`;
+    else if (injStr) line=`${mechStr}발생한 ${injStr} 주소로 내원함.`;
+    if (line) lines.push(line);
+  }
+
+  const siteStr2=[T['t-side'],partCustom||T['t-part']].filter(Boolean).join(' ');
+  if (siteStr2) { any=true; lines.push(''); lines.push(`@ ${siteStr2}`); }
+
+  const size=sizeCustom||T['t-size'];
+  if (T.findingsActive&&T.findings.nailbed) { any=true; lines.push('nailbed injury +'); }
+  if (size) { any=true; lines.push(size); }
+  if (T['t-layer']) { any=true; lines.push(T['t-layer']); }
+  if (T.findingsActive) {
+    any=true;
+    const f = T.findings;
+    if (f.nailbed)   lines.push(`nailbed injury ${f.nailbed}`);
+    if (f.fb)        lines.push(`foreign body ${f.fb}`);
+    if (f.bleeding)  lines.push(`active bleeding ${f.bleeding}`);
+    if (f.tendon)    lines.push(`tendon injury ${f.tendon}`);
+    if (f.nerve)     lines.push(`nerve injury ${f.nerve}`);
+    if (f.deformity) lines.push(`deformity ${f.deformity}`);
+  }
+
+  setOutput(lines, any);
+}
+
+// ── XRAY ──
+function addXray() {
+  const el = document.getElementById('output');
+  const cur = el.innerText.trim();
+  const xray = 'X-ray : no definite bony abnormality';
+  if (!cur || el.querySelector('.ph')) {
+    el.textContent = xray;
+  } else if (!cur.includes('X-ray')) {
+    el.textContent = cur + '\n' + xray;
+  }
+  document.getElementById('charcount').textContent = el.innerText.length + '자';
+}
+
+// ── SET OUTPUT (공유) ──
+function setOutput(lines, any) {
+  const el = document.getElementById('output');
+  if (!any) {
+    el.innerHTML='<span class="ph">왼쪽 항목을 클릭하면 차팅이 자동 생성됩니다.</span>';
+    document.getElementById('charcount').textContent='0자';
+    document.getElementById('status').textContent='대기 중';
+    return;
+  }
+  el.textContent=lines.join('\n');
+  document.getElementById('charcount').textContent=el.innerText.length+'자';
+  document.getElementById('status').textContent='생성됨';
+}
+
+// ── RESET ──
+function resetAll() {
+  if (!confirm('초기화할까요?')) return;
+  S.sex=null; S.dur=null; S.abd_area=null;
+  S.pmhx=[]; S.pmhxFu={}; S.pmhxCustom=[];
+  S.cc=[]; S.ccCustom=[]; S.assoc=[]; S.pe_etc=[];
+  Object.keys(S.pe).forEach(k=>S.pe[k]=null);
+  Object.keys(S.peActive).forEach(k=>S.peActive[k]=false);
+  Object.keys(T).forEach(k=>{
+    if (Array.isArray(T[k])) T[k]=[];
+    else if (k==='findings') Object.keys(T.findings).forEach(f=>T.findings[f]=null);
+    else if (k==='findingsActive') T[k]=false;
+    else T[k]=null;
+  });
+  document.querySelectorAll('.chip,.pe-chip').forEach(c=>c.classList.remove('on','on-plus','on-minus'));
+  ['age','bt','bp','hr','spo2','memo','nv-cnt','dia-cnt',
+   't-age','t-mech-custom','t-cc-custom','t-part-custom','t-size-custom',
+   'pmhx-custom-input','cc-custom-input','t-pmhx-custom-input'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('pmhx-fu-area').innerHTML='';
+  document.getElementById('pmhx-custom-tags').innerHTML='';
+  document.getElementById('cc-custom-tags').innerHTML='';
+  document.getElementById('t-pmhx-custom-tags').innerHTML='';
+  document.getElementById('abd-area-chips').style.display='none';
+  document.getElementById('date-card').style.display='none';
+  if (currentTab==='trauma') renderTrauma(); else render();
+}
+</script>
+</body>
+</html>
